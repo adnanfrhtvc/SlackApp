@@ -1,0 +1,104 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "SlackApp API",
+    "version": "1.0.0",
+    "description": "API documentation for the SlackApp project."
+  },
+  "servers": [
+    {
+      "url": "http://localhost/SlackApp/api",
+      "description": "Local server"
+    }
+  ],
+  "paths": {
+    "/messages.php": {
+      "get": {
+        "summary": "Retrieve all messages",
+        "responses": {
+          "200": {
+            "description": "List of messages",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "message": { "type": "string" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "Add a new message",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": { "type": "string" }
+                },
+                "required": ["message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": { "description": "Message created" }
+        }
+      }
+    },
+    "/messages.php/{id}": {
+      "put": {
+        "summary": "Update a message by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "message": { "type": "string" }
+                },
+                "required": ["message"]
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": { "description": "Message updated" }
+        }
+      },
+      "delete": {
+        "summary": "Delete a message by ID",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "integer" }
+          }
+        ],
+        "responses": {
+          "204": { "description": "Message deleted" }
+        }
+      }
+    }
+  }
+}

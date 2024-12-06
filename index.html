@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Slack Message Manager</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="container">
+    <div class="editor">
+      <textarea id="messageEditor" placeholder="Write your message here..."></textarea>
+      <button id="saveMessage">Save</button>
+      <button id="deleteMessage" style="display: none;">Delete</button>
+    </div>
+    <div class="messages">
+      <h2>Messages</h2>
+      <div id="messagesList"></div>
+    </div>
+  </div>
+  <script src="script.js"></script>
+</body>
+</html>
