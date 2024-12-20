@@ -1,14 +1,39 @@
 <?php
 require_once '../config.php';
 
-function sendToSlack($channel, $message) {
+function convertHtmlToSlackFormat($html) {
+    libxml_use_internal_errors(true);
+
+    $dom = new DOMDocument();
+    $dom->loadHTML($html, LIBXML_HTML_NOIMPLIED | LIBXML_HTML_NODEFDTD);
+
+    libxml_clear_errors();
+
+    $text = '';
+
+    foreach ($dom->getElementsByTagName('p') as $paragraph) {
+        $text .= $paragraph->textContent . "\n";
+    }
+
+    foreach ($dom->getElementsByTagName('img') as $img) {
+        if ($img instanceof DOMElement) {
+            $src = $img->getAttribute('src');
+            $text .= "<" . $src . ">\n";
+        }
+    }
+
+    return $text;
+}
+
+function sendToSlack($channel, $htmlMessage) {
     $url = "https://slack.com/api/chat.postMessage";
-    $token = "xoxb-your-slack-bot-token"; // Replace with your Slack bot token
+    $token = "xoxb-442172359975-8228144726832-aUHPyMgVvHTDYjaoJ2KxwYEn"; // Replace with your Slack bot token
+
+    $message = convertHtmlToSlackFormat($htmlMessage);
 
     $data = [
         "channel" => $channel,
-        "text" => $message, // For simple text
-        // Optionally, use blocks for advanced formatting
+        "text" => $message,
         "blocks" => json_encode([
             [
                 "type" => "section",
@@ -39,13 +64,43 @@ function sendToSlack($channel, $message) {
 
     curl_close($ch);
 
-    return json_decode($response, true);
+    $responseDecoded = json_decode($response, true);
+    error_log("Slack API response: " . print_r($responseDecoded, true));
+
+    return $responseDecoded;
 }
 
-// Example usage
-$channel = "#general";
-$message = "*Hello, world!* :tada: Here's a rich text example.";
-$result = sendToSlack($channel, $message);
+function sendMessages() {
+    global $db;
 
-echo json_encode($result);
+    // Fetch all unsent messages
+    $query = "SELECT * FROM slack_messages WHERE sent = 0";
+    $stmt = $db->prepare($query);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $id = $row['id'];
+        $channel = $row['channel'];
+        $message = $row['rich_text_format'];
+
+        // Send the message to Slack
+        $response = sendToSlack($channel, $message);
+
+        // If successfully sent, mark the message as sent
+        if (!empty($response['ok']) && $response['ok'] === true) {
+            $updateQuery = "UPDATE slack_messages SET sent = 1 WHERE id = ?";
+            $updateStmt = $db->prepare($updateQuery);
+            $updateStmt->bind_param("i", $id);
+            $updateStmt->execute();
+        } else {
+            error_log("Failed to send message ID $id: " . print_r($response, true));
+        }
+    }
+
+    $stmt->close();
+}
+
+// Trigger message sending
+sendMessages();
 ?>

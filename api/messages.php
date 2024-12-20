@@ -6,16 +6,13 @@ header('Access-Control-Allow-Headers: Content-Type');
 
 require_once '../config.php';
 
-// Parse the HTTP method
 $method = $_SERVER['REQUEST_METHOD'];
-
-// Get the input
 $input = json_decode(file_get_contents('php://input'), true);
 
 switch ($method) {
     case 'GET':
         // Fetch all messages
-        $query = "SELECT * FROM slack_messages ORDER BY scheduled_time DESC";
+        $query = "SELECT * FROM slack_messages ORDER BY created_at DESC";
         $result = $conn->query($query);
 
         $messages = [];
@@ -28,11 +25,10 @@ switch ($method) {
 
     case 'POST':
         // Add a new message
-        $channel = $conn->real_escape_string($input['channel']);
         $message = $conn->real_escape_string($input['message']);
-        $scheduled_time = $conn->real_escape_string($input['scheduled_time']);
-        
-        $query = "INSERT INTO slack_messages (channel, message, scheduled_time) VALUES ('$channel', '$message', '$scheduled_time')";
+        $created_at = date('Y-m-d H:i:s');
+
+        $query = "INSERT INTO slack_messages (message, created_at, sent) VALUES ('$message', '$created_at', 0)";
         if ($conn->query($query)) {
             echo json_encode(['success' => true, 'id' => $conn->insert_id]);
         } else {
@@ -41,42 +37,42 @@ switch ($method) {
         }
         break;
 
-    case 'PUT':
-        // Update an existing message
+        case 'PUT':
+            $id = isset($input['id']) ? $input['id'] : null;
+            $message = isset($input['message']) ? $input['message'] : null;
         
-        $id = isset($input['id']) ? $input['id'] : null;
-        $message = isset($input['message']) ? $input['message'] : null;
+            if ($id && $message) {
+                $query = "UPDATE slack_messages SET message='$message' WHERE id='$id'";
+                if ($conn->query($query)) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    http_response_code(500);
+                    echo json_encode(['error' => $conn->error]);
+                }
+            } else {
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid input']);
+            }
+            break;
         
-        if ($id && $message) {
-            $query = "UPDATE slack_messages SET message='$message' WHERE id='$id'";
-            if ($conn->query($query)) {
-                echo json_encode(['success' => true]);
+
+        case 'DELETE':
+            $id = isset($_GET['id']) ? $conn->real_escape_string($_GET['id']) : null;
+        
+            if ($id) {
+                $query = "DELETE FROM slack_messages WHERE id='$id'";
+                if ($conn->query($query)) {
+                    echo json_encode(['success' => true]);
+                } else {
+                    http_response_code(500);
+                    echo json_encode(['error' => $conn->error]);
+                }
             } else {
-                http_response_code(500);
-                echo json_encode(['error' => $conn->error]);
+                http_response_code(400);
+                echo json_encode(['error' => 'Invalid ID']);
             }
-        } else {
-            http_response_code(400);
-            echo json_encode(['error' => 'Invalid input']);
-        }        
-
-    case 'DELETE':
-        // Delete a message
-        $id = isset($_GET['id']) ? $conn->real_escape_string($_GET['id']) : null;
-
-        if ($id) {
-            $query = "DELETE FROM slack_messages WHERE id='$id'";
-            if ($conn->query($query)) {
-                echo json_encode(['success' => true]);
-            } else {
-                http_response_code(500);
-                echo json_encode(['error' => $conn->error]);
-            }
-        } else {
-        http_response_code(400);
-        echo json_encode(['error' => 'Invalid ID']);
-        }
-
+            break;
+        
 
     default:
         http_response_code(405);
@@ -84,6 +80,4 @@ switch ($method) {
         break;
 }
 
-// Close the connection
 $conn->close();
-?>
